@@ -18,7 +18,7 @@ unset modulenames
 export MMOB_VERSION_MAJOR="1"
 export MMOB_VERSION_MINOR="1"
 export MMOB_VERSION_EXTRA="8"
-export MMOB_DISPLAYVERISON="1.1.8-dev"
+export MMOB_DISPLAYVERISON="1.1.8-dev-mdbchanges"
 
 # For ota() verison check.
 if [ "$1" = "otavercheck" ]; then
@@ -224,6 +224,14 @@ checkformdb() {
         fi
         source $i
     done
+}
+
+mdbabort() {
+    abort "MDBERROR"
+}
+
+mdberror() {
+    abort "$@" noexit
 }
 
 ota() {
