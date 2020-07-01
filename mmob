@@ -17,8 +17,8 @@ unset modulenames
 # Script variables
 export MMOB_VERSION_MAJOR="1"
 export MMOB_VERSION_MINOR="2"
-export MMOB_VERSION_EXTRA="0"
-export MMOB_DISPLAYVERISON="1.2.0-release"
+export MMOB_VERSION_EXTRA="1"
+export MMOB_DISPLAYVERISON="1.2.1"
 
 # For ota() verison check.
 if [ "$1" = "otavercheck" ]; then
