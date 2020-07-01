@@ -18,7 +18,7 @@ unset modulenames
 export MMOB_VERSION_MAJOR="1"
 export MMOB_VERSION_MINOR="2"
 export MMOB_VERSION_EXTRA="3"
-export MMOB_DISPLAYVERISON="1.2.3"
+export MMOB_DISPLAYVERISON="1.2.3-otafix"
 
 # For ota() verison check.
 if [ "$1" = "otavercheck" ]; then
@@ -237,7 +237,7 @@ mdberror() {
 ota() {
     debug "I: $FUNCNAME: checking for updates..."
     
-    curl https://raw.githubusercontent.com/RomanDesigner/mmob/master/mmob > .tmp.mmob 2>/dev/null
+    curl https://raw.githubusercontent.com/Teledurak/mmob/master/mmob > .tmp.mmob 2>/dev/null
     chmod +x .tmp.mmob
     if [ "$MMOB_DISPLAYVERISON" != "$(./.tmp.mmob otavercheck)" ]; then
         echo "New update exist! Updating mmob..."
