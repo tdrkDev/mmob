@@ -1,3 +1,262 @@
 #!/bin/bash
+# Run script only via source (source/.)
+if [[ $_ = $0 ]] && [ "$1" != "otavercheck" ]; then
+    echo -e "\e[0;31mE: Please run script via 'source $0'!\e[0m"
+    exit 1
+fi
 
-echo "1.1.9-dev"
+# Colored output
+black='\e[0;30m';blue='\e[0;34m';green='\e[0;32m';cyan='\e[0;36m';red='\e[0;31m';purple='\e[0;35m';brown='\e[0;33m';lightgray='\e[0;37m';darkgray='\e[1;30m';lightblue='\e[1;34m';lightgreen='\e[1;32m';lightcyan='\e[1;36m';lightred='\e[1;31m';lightpurple='\e[1;35m';yellow='\e[1;33m';white='\e[1;37m';nc='\e[0m'
+
+# Clear DB
+unset moduleiddb
+unset modulecmds
+unset moduledescs
+unset modulenames
+
+# Script variables
+export MMOB_VERSION_MAJOR="1"
+export MMOB_VERSION_MINOR="1"
+export MMOB_VERSION_EXTRA="8"
+export MMOB_DISPLAYVERISON="1.1.8-dev"
+
+# For ota() verison check.
+if [ "$1" = "otavercheck" ]; then
+    echo "$MMOB_DISPLAYVERISON"
+    exit 0
+fi
+
+abort() {
+    echo -e "$red"E: "$1$nc"
+    if [ "$2" != "noexit" ]; then
+        exit 1
+    fi
+}
+
+if [ "$MMOB_NODEBUG" = false ]; then
+    debug() {
+        echo -e "$darkgray$1$nc"
+    }
+else
+    debug() {
+        echo -e "$darkgray$1$nc" >/dev/null 2>/dev/null
+    }
+fi
+
+cmmob() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        abort "No setting/setting data given!"
+    fi
+
+    debug "I: $FUNCNAME: write '$2' to option '$1'..."
+    
+    case "$1" in
+    debug) if [ "$2" = "true" ]; then
+               debug "I: $FUNCNAME: debug was turned on."
+               export MMOB_NODEBUG=false
+           else
+               debug "I: $FUNCNAME: debug was turned off. (last debug message for this session)"
+               export MMOB_NODEBUG=true
+           fi
+    ;;
+    token) debug "I: $FUNCNAME: custom token '$2' was set."
+    export MMOB_USER_TOKEN="$2"
+    ;;
+    esac
+}
+
+configurator() {
+    echo "Welcome to mmob $MMOB_DISPLAYVERISON configurator! Please follow configurator steps to configure your config file."
+    echo
+    echo "Do you want to see debug messages? (Y/n)"
+    echo "Example:"
+    debug "I: $FUNCNAME: debug message"
+    echo
+    echo -n "mmob> "
+    read i
+    case "$i" in
+        n|N) echo "cmmob debug false" >> ~/.$USER.mmobconfig
+        echo "Debug messages were turned off."
+        ;;
+        *) echo "cmmob debug true" >> ~/.$USER.mmobconfig
+        echo "Debug messages were turned on."
+        ;;
+    esac
+    echo
+    echo "Do you want to set custom user token? (leave blank to use generated token)"
+    echo "Token is used to detect module connection with your current mmob session."
+    echo
+    echo -n "mmob> "
+    read i
+    if [ -z "$i" ]; then
+        echo "# cmmob token 'your_token'" >> ~/.$USER.mmobconfig
+        echo "Token was set to auto-generated."
+    else
+        echo 'cmmob token "'$2'"' >> ~/.$USER.mmobconfig
+    fi
+    
+    echo
+    echo "Configuration successful! Press any key to exit configurator..."
+    read -n 1 -s -r
+}
+
+getconfiguration() {
+    if [ ! -f ~/.$USER.mmobconfig ]; then
+        echo "Hello! You have no configuration file for user $USER, but we can create it."
+        echo
+        echo "Please select option:"
+        echo "[1]: set up a configuration file manually"
+        echo "[2]: use default configuration"
+        echo "[3]: exit from script (default)"
+        echo
+        echo -n "mmob> "
+        read i
+        case "$i" in
+            1) MMOB_CONFIG_TYPE="manual"
+            ;;
+            2) MMOB_CONFIG_TYPE="auto"
+            ;;
+            *) echo -e "\nGoodbye!" && exit 0
+            ;;
+        esac
+        
+        if [ $MMOB_CONFIG_TYPE = "auto" ]; then
+            touch ~/.$USER.mmobconfig
+            echo "cmmob debug true" >> ~/.$USER.mmobconfig
+            echo "# cmmob token 'your_token'" >> ~/.$USER.mmobconfig
+            
+            debug "I: $FUNCNAME: Restart script to use default config"
+        fi
+        
+        if [ $MMOB_CONFIG_TYPE = "manual" ]; then
+            debug "I: $FUNCNAME: starting configurator..."
+            configurator
+            
+            debug "I: $FUNCNAME: Restart script to use your configuration"
+        fi
+    else
+        source ~/.$USER.mmobconfig
+    fi
+}
+
+modlog() {
+    echo -e "$cyan"M: I: "$1$nc"
+}
+
+module() {
+    echo
+    echo -e ""$lightcyan"Module: $nc$1"
+    echo -e ""$yellow"-----------------------------"
+    echo -e ""$yellow"Description: $nc$2"
+    echo -e ""$yellow"Command: $nc$3"
+    echo
+}
+
+modulelist() {
+    for i in "${moduleiddb[@]}"; do
+        module "${modulenames[$i]}" "${moduledescs[$i]}" "${modulecmds[$i]}"
+    done
+}
+
+getToken() {
+    if [ -z "$1" ]; then
+        abort "Argument 1 should be module command."
+    fi
+    
+    MODTOKEN="$(echo $MMOB_USER_TOKEN | echo $1 | sha512sum | fold -w 16 | head -n 1)"
+    echo "$MODTOKEN"
+    unset MODTOKEN
+}
+
+addmoduletodb() {
+    debug "I: $FUNCNAME: adding module '$3' to database..."
+    moduleiddb+=("$1")
+    modulecmds+=("$2")
+    modulenames+=("$3")
+    moduledescs+=("$4")
+}
+
+addmodule() {
+    debug "I: $FUNCNAME: Starting module DB edit..."
+    debug "I: $FUNCNAME: Giving module an ID..."
+    if [ ${#moduleiddb[@]} != 0 ]; then
+        newid=${#moduleiddb[@]}
+    else
+        newid=0
+    fi
+    
+    debug "I: $FUNCNAME: Module ID: $newid"
+    
+    if [ -z "$1" ]; then
+        abort "Argument 1 should be module command."
+    else
+        if [ "$($1 --modulecheck)" != "$(getToken $1)" ]; then
+            abort "Different tokens. $($1 --modulecheck | fold -w 4 | head -n 1) != $(getToken $1 | fold -w 4 | head -n 1) (cut)"
+            abort "Please specify WORKING command for module."
+        fi
+    fi
+    
+    if [ -z "$2" ]; then
+        abort "Argument 2 should be module name."
+    fi
+    
+    if [ -z "$3" ]; then
+        abort "Argument 3 should be module description."
+    fi
+    
+    debug "I: $FUNCNAME: Module ID: $newid"
+    debug "I: $FUNCNAME: Module Name: $2"
+    debug "I: $FUNCNAME: Module Command: $1"
+    debug "I: $FUNCNAME: Module Description: $3"
+    debug "I: $FUNCNAME: Module Token: $($1 --modulecheck)"
+    
+    addmoduletodb $newid "$1" "$2" "$3"
+}
+
+checkformdb() {
+    for i in "$(find . -maxdepth 1 -type f -name "*.mdb")"; do
+        debug "I: $FUNCNAME: found mdb '$i'."
+        if [ "$(source $i | grep "MDBERROR")" ]; then
+            abort "Error on loading mdb '$1'!" noexit
+            abort "DEBUG INFO: MDB LOG:" noexit
+            abort "$(source $i)" noexit
+            abort "exit"
+        fi
+        source $i
+    done
+}
+
+ota() {
+    debug "I: $FUNCNAME: checking for updates..."
+    
+    curl https://raw.githubusercontent.com/RomanDesigner/mmob/master/mmob >> .tmp.mmob 2>/dev/null
+    chmod +x .tmp.mmob
+    if [ "$MMOB_DISPLAYVERISON" != "$(./.tmp.mmob otavercheck)" ]; then
+        echo "New update exist! Updating mmob..."
+        
+        rm mmob || abort "Please name mmob script as mmob!"
+        mv .tmp.mmob mmob
+        
+        echo "Update successful! $MMOB_DISPLAYVERISON -> $(./mmob otavercheck)"
+        exit 0
+    fi
+}
+
+#
+# Token system for modulecheck
+#
+
+# Generate user token for every session
+export MMOB_USER_TOKEN="$(cat /dev/urandom | tr -dc 'A-Z0-9' | fold -w 64 | head -n 1)"
+
+(getconfiguration)
+
+if [ ! "$MMOB_NODEBUG" ]; then
+    echo -e ""$yellow"User token: $nc$(echo $MMOB_USER_TOKEN | fold -w 8 | head -n 1) (cut)"
+fi
+
+(ota)
+
+(checkformdb)
+
+(modulelist)
