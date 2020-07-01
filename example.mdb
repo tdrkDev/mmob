@@ -5,18 +5,6 @@
 #
 
 #
-# MDB CUSTOM COMMANDS
-#
-
-mdberror() {
-    abort "MDBERROR"
-}
-
-mdbabort() {
-    abort "$@" noexit
-}
-
-#
 # MODULE COMMANDS
 #
 
@@ -49,7 +37,7 @@ goodmorning() {
 #
 
 # The easiest way to edit DB
-addmodule "hello" "Example 1" "Example module for my first MDB" || mdberror
+addmodule "hello" "Example 1" "Example module for my first MDB" || mdbabort
     
 #######################################################
 
@@ -63,7 +51,7 @@ else
     newid=0
 fi
 # Add module to DB
-addmoduletodb $newid "bye" "Example 2" "Example module 2 for my first MDB" || mdberror
+addmoduletodb $newid "bye" "Example 2" "Example module 2 for my first MDB" || mdbabort
     
 #######################################################
 
