@@ -237,7 +237,7 @@ mdberror() {
 ota() {
     debug "I: $FUNCNAME: checking for updates..."
     
-    curl https://raw.githubusercontent.com/RomanDesigner/mmob/master/mmob >> .tmp.mmob 2>/dev/null
+    curl https://raw.githubusercontent.com/RomanDesigner/mmob/master/mmob > .tmp.mmob 2>/dev/null
     chmod +x .tmp.mmob
     if [ "$MMOB_DISPLAYVERISON" != "$(./.tmp.mmob otavercheck)" ]; then
         echo "New update exist! Updating mmob..."
