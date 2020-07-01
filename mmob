@@ -257,14 +257,14 @@ ota() {
 # Generate user token for every session
 export MMOB_USER_TOKEN="$(cat /dev/urandom | tr -dc 'A-Z0-9' | fold -w 64 | head -n 1)"
 
-(getconfiguration)
+getconfiguration
 
 if [ ! "$MMOB_NODEBUG" ]; then
     echo -e ""$yellow"User token: $nc$(echo $MMOB_USER_TOKEN | fold -w 8 | head -n 1) (cut)"
 fi
 
-(ota)
+ota
 
-(checkformdb)
+checkformdb
 
-(modulelist)
+modulelist
