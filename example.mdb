@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# MDB "example name"
+# version x.x.x
+#
+
+#
+# MDB CUSTOM COMMANDS
+#
+
+mdberror() {
+    abort "MDBERROR"
+}
+
+mdbabort() {
+    abort "$@" noexit
+}
+
+#
+# MODULE COMMANDS
+#
+
+hello() {
+    if [ "$1" = "--modulecheck" ]; then
+        echo "$(getToken "$FUNCNAME")"
+        exit 0
+    fi
+    echo "Hello, world!"
+}
+
+bye() {
+    if [ "$1" = "--modulecheck" ]; then
+        echo "$(getToken "$FUNCNAME")"
+        exit 0
+    fi
+    echo "Goodbye, world!"
+}
+
+goodmorning() {
+    if [ "$1" = "--modulecheck" ]; then
+        echo "$(getToken "$FUNCNAME")"
+        exit 0
+    fi
+    echo "Good morning, world!"
+}
+
+#
+# DB EDIT FOR MODULES
+#
+
+# The easiest way to edit DB
+addmodule "hello" "Example 1" "Example module for my first MDB" || mdberror
+    
+#######################################################
+
+# More harder way to edit DB, you need to specify ID
+# Command check not made by this way, you can add any non-working command.
+
+# Generate module ID
+if [ ${#moduleiddb[@]} != 0 ]; then
+    newid=${#moduleiddb[@]}
+else
+    newid=0
+fi
+# Add module to DB
+addmoduletodb $newid "bye" "Example 2" "Example module 2 for my first MDB" || mdberror
+    
+#######################################################
+
+# Hardest way to add module to DB.
+# Command check not made by this way, you can add any non-working command.
+
+# Generate module ID
+if [ ${#moduleiddb[@]} != 0 ]; then
+    newid=${#moduleiddb[@]}
+else
+    newid=0
+fi
+# Add module to DB
+moduleiddb+=("$newid")
+modulecmds+=("goodmorning")
+modulenames+=("Example 3")
+moduledescs+=("Example module 3 for my first MDB")
